@@ -66,6 +66,27 @@ def make_network_graph(edge_list) -> nx.Graph:
         G.add_edge(('router', u), ('router', v), **params)
     return G
 
+def make_pd_graph(edge_list) -> nx.Graph:
+    """
+    Creates a computer network graph from edge list
+    """
+
+    def parse_edge(edge):
+        params = edge.copy()
+        u = params.pop('u')
+        v = params.pop('v')
+        distance = params.pop('distance')
+        return u, v, distance
+
+    graph = nx.DiGraph()
+    for edge in edge_list:
+        u, v, distance = parse_edge(edge)
+        graph.add_edge( ('router', u), ('router', v), weight= distance)
+        graph.add_edge( ('router', v), ('router', u), weight= distance)
+
+    return graph
+
+
 def gen_network_graph(gen) -> nx.Graph:
     """
     Generates a random computer network graph given a

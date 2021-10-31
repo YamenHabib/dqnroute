@@ -1,0 +1,40 @@
+network:
+  - {u: 0, v: 1, distance: 14}
+  - {u: 0, v: 2, distance: 25}
+  - {u: 0, v: 3, distance: 20}
+  - {u: 0, v: 4, distance: 22}
+  - {u: 0, v: 5, distance: 45}
+  - {u: 0, v: 6, distance: 48}
+  - {u: 1, v: 2, distance: 16}
+  - {u: 1, v: 3, distance: 18}
+  - {u: 1, v: 4, distance: 22}
+  - {u: 1, v: 5, distance: 16}
+  - {u: 1, v: 6, distance: 16}
+  - {u: 2, v: 3, distance: 16}
+  - {u: 2, v: 4, distance: 20}
+  - {u: 2, v: 5, distance: 16}
+  - {u: 2, v: 6, distance: 23}
+  - {u: 3, v: 4, distance: 19}
+  - {u: 3, v: 5, distance: 15}
+  - {u: 3, v: 6, distance: 23}
+  - {u: 4, v: 5, distance: 24}
+  - {u: 4, v: 6, distance: 22}
+  - {u: 5, v: 6, distance: 18}
+
+requests:
+  - {v: 0, demands: 10}
+  - {v: 1, demands: -2}
+  - {v: 2, demands: -4}
+  - {v: 3, demands: 3}
+  - {v: 4, demands: -1}
+  - {v: 5, demands: -6}
+  - {v: 6, demands: 5}
+
+vehicles:
+  - {v: 0, capacity: 10, max_road: 100}
+  # - {v: 0, capacity: 15, max_road: 100}
+  # - {v: 0, capacity: 10, max_road: 100}
+
+settings:
+  router:
+    learning_rate: 0.2

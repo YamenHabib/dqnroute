@@ -9,3 +9,7 @@ img*
 *.h5
 *.egg-info
 *.png
+venv/
+src/build
+venv/
+src/dist

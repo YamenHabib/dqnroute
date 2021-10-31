@@ -122,7 +122,6 @@ class ConveyorFactory(HandlerFactory):
         else:
             raise Exception('Unknown agent type: ' + a_type)
 
-
 class ConveyorsEnvironment(MultiAgentEnv):
     """
     Environment which models the conveyor system and the movement of bags.
@@ -418,7 +417,6 @@ class ConveyorsEnvironment(MultiAgentEnv):
             self._updateAll()
         except Interrupt:
             pass
-
 
 class ConveyorsRunner(SimulationRunner):
     """

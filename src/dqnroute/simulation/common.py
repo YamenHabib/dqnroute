@@ -50,8 +50,7 @@ class MultiAgentEnv(HasLog):
     def __init__(self, env: Environment, **kwargs):
         self.env = env
         self.conn_graph = self.makeConnGraph(**kwargs)
-        self.factory = self.makeHandlerFactory(
-            env=self.env, conn_graph=self.conn_graph, **kwargs)
+        self.factory = self.makeHandlerFactory(env=self.env, conn_graph=self.conn_graph, **kwargs)
 
         agent_ids = list(self.conn_graph.nodes)
         self.handlers = {agent_id: self.factory._makeHandler(agent_id) for agent_id in agent_ids}
