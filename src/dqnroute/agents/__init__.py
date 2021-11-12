@@ -24,6 +24,10 @@ _network_router_classes = {
     'dqn_emb': DQNRouterEmbNetwork,
 }
 
+_pd_router_classes = {
+    'pd_router': PDRouter,
+}
+
 _conveyors_router_classes = {
     'simple_q': SimpleQRouterConveyor,
     'pred_q': PredictiveQRouterConveyor,
@@ -45,7 +49,10 @@ def get_router_class(router_type: str, context: Optional[str] = None, oracle=Fal
             res = _network_router_classes[router_type]
         elif context == 'conveyors':
             res = _conveyors_router_classes[router_type]
-
+        elif context == 'pd':
+            print("hi")
+            res = _pd_router_classes[router_type]
+        
         if res is None:
             raise Exception('Unknown simulation context "{}" '\
                             '(should be "network" or "conveyors")'.format(context))

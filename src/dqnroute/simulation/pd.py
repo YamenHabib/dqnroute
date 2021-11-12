@@ -15,25 +15,22 @@ from ..agents import *
 from ..constants import *
 from .common import *
 
+logger = logging.getLogger(PD_LOGGER)
 
 class PDRouterFactory(HandlerFactory):
     def __init__(self, router_type, routers_cfg, context = None,
                  topology_graph = None, training_router_type = None, **kwargs):
+
         RouterClass = get_router_class(router_type, context)
         self.context = context
         self.router_cfg = routers_cfg.get(router_type, {})
         self.edge_weight = 'latency' if context == 'network' else 'length'
         self._dyn_env = None
 
-        if training_router_type is None:
-            self.training_mode = False
-            self.router_type = router_type
-            self.RouterClass = RouterClass
-        else:
-            self.training_mode = True
-            TrainerClass = get_router_class(training_router_type, context)
-            self.router_type = 'training__{}__{}'.format(router_type, training_router_type)
-            self.RouterClass = TrainingRouterClass(RouterClass, TrainerClass, **kwargs)
+
+        self.training_mode = False
+        self.router_type = router_type
+        self.RouterClass = RouterClass
         super().__init__(**kwargs)
 
         if topology_graph is None:
@@ -41,11 +38,6 @@ class PDRouterFactory(HandlerFactory):
         else:
             self.topology_graph = topology_graph
 
-        if self.training_mode:
-            dummy = RouterClass(
-                **self._handlerArgs(('router', 0), neighbours=[], random_init=True))
-            self.brain = dummy.brain
-            self.router_cfg['brain'] = self.brain
 
     def dynEnv(self):
         if self._dyn_env is None:
@@ -73,7 +65,7 @@ class PDRouterFactory(HandlerFactory):
         })
         kwargs.update(self.router_cfg)
 
-        if issubclass(self.RouterClass, LinkStateRouter):
+        if issubclass(self.RouterClass, PDRouter):
             kwargs['adj_links'] = G.adj[agent_id]
         return kwargs
 
@@ -90,27 +82,102 @@ class PDEnviroment(MultiAgentEnv):
     """
     context = 'pd'
 
-    def __init__(self, data_series: EventSeries, **kwargs):
+    def __init__(self, data_series: EventSeries, requests: List, vehicles_param, **kwargs):
         self.data_series = data_series
         super().__init__(**kwargs)
+        self.requests= requests
+
+        self.vehicles= []
+        for i, vp in enumerate(vehicles_param):
+            self.vehicles.append(Vehicle(id = i,
+                                        capacity= vp['capacity'],
+                                        max_road= vp['max_road'],
+                                        road_till_now= 0,
+                                        current_amount= 0,
+                                        current_pos= ('router', vp['v']),
+                                        env= self.env))
+        
 
     def makeConnGraph(self, network_cfg, **kwargs) -> nx.Graph:
         return make_pd_graph(network_cfg)
 
     def makeHandlerFactory(self, **kwargs):
-        return PDRouterFactory(context='network', **kwargs)
+        return PDRouterFactory(router_type='pd_router', context='pd', **kwargs)
+
 
     def handleAction(self, from_agent: AgentId, action: Action) -> Event:
-        pass
+        """
+        discuss case of VehicleRouteAction, VehicleReceiveAction
+        """
+
+        if isinstance(action, VehicleRouterAction):
+            to_agent = action.to
+            if not self.conn_graph.has_edge(from_agent, to_agent):
+                raise Exception("Trying to route to a non-neighbor")
+            
+            edge_params = self.conn_graph[from_agent][to_agent]
+            distance =  edge_params['weight']
+            vehicle= action.vehicle
+            if vehicle.road_till_now + distance >= vehicle.max_road:
+                raise Exception(f"Vehicle_{vehicle.id}'s gas out.")
+            
+            self.env.process(self._vehicleTransfer(from_agent, to_agent, action.vehicle))
+            return Event(self.env).succeed()
+        
+    def _vehicleTransfer(self, from_agent: AgentId, to_agent: AgentId, vehicle: Vehicle):
+        """
+        Transfer Vehicle from one agent to another.
+        """
+        logger.debug("Vehicle #{} transports: {} -> {} with amount: {} and free capacity: {}, road till now: {}, remaining road: {}".format(
+            vehicle.id, 
+            from_agent[1], 
+            to_agent[1],
+            vehicle.current_amount,
+            vehicle.capacity - vehicle.current_amount,
+            vehicle.road_till_now,
+            vehicle.max_road - vehicle.road_till_now))
+        edge_params = self.conn_graph[from_agent][to_agent]
+        distance =  edge_params['weight']
+        vehicle.road_till_now += distance
+        with vehicle.request() as req:
+            yield req
+            yield self.env.timeout(distance)
+            print(self.env.now)
+            
+        self.handleWorldEvent(VehicleEnqueuedEvent(to_agent, vehicle))
 
     def handleWorldEvent(self, event: WorldEvent) -> Event:
-        pass
+        if isinstance(event, VehicleEnqueuedEvent):
+            self.env.process(self._processInVehicle(event.agent, event.vehicle))
+            return self.passToAgent(event.agent, event)
+        else:
+            return super().handleWorldEvent(event)
 
-    def _edgeTransfer(self, from_agent: AgentId, to_agent: AgentId, pkg: Package):
-        pass
-
-    def _inputQueue(self, from_agent: AgentId, to_agent: AgentId, pkg: Package):
-        pass
+    def _processInVehicle(self, agent: AgentId, vehicle: Vehicle):
+        """
+        Process the loading process inside node.
+        """
+        for request in self.requests:
+            if request['v'] == agent[1]:
+                demand = request['demands']
+                yield self.env.timeout(abs(demand))
+                # case it's a demand 
+                if demand < 0:
+                    if vehicle.current_amount > abs(demand):
+                        vehicle.current_amount += demand
+                    else:
+                        raise Exception('Not Enough Amount in Viehvle') 
+                
+                else:
+                    if vehicle.current_amount + demand > vehicle.capacity:
+                        raise Exception('Not Enough Space in Viehvle') 
+                    else:
+                        vehicle.current_amount += demand
+                self.requests.remove(request)
+                break
+                # case it's a pick up
+        
+        
 
 class PDRunner(SimulationRunner):
     """
@@ -131,16 +198,27 @@ class PDRunner(SimulationRunner):
         """
         return PDEnviroment(env=self.env, 
                             data_series=self.data_series,
+                            requests= self.run_params['requests'],
                             network_cfg=self.run_params['network'],
                             routers_cfg=self.run_params['settings']['router'],
+                            vehicles_param = self.run_params['vehicles'],
                             **kwargs)
 
     def relevantConfig(self):
-        ps = self.run_params
-        return ps
+        return self.run_params
 
     def makeRunId(self, random_seed):
         return '{}-{}'.format(self.world.factory.router_type, random_seed)
 
     def runProcess(self, random_seed = None):
-        raise NotImplementedError
+
+        if random_seed is not None:
+            set_random_seed(random_seed)
+
+        all_nodes = list(self.world.conn_graph.nodes)
+        all_edges = list(self.world.conn_graph.edges(data=True))
+
+        for vehicle in self.world.vehicles:
+            yield self.world.handleWorldEvent(VehicleEnqueuedEvent(all_nodes[vehicle.current_pos[1]], vehicle))
+
+                

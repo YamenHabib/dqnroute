@@ -5,9 +5,9 @@ from copy import deepcopy
 from typing import List, Tuple, Callable
 from ..messages import *
 from ..utils import *
-from ..constants import DQNROUTE_LOGGER
+from ..constants import DQNROUTE_LOGGER, PD_LOGGER
 
-logger = logging.getLogger(DQNROUTE_LOGGER)
+logger = logging.getLogger(PD_LOGGER)
 
 
 class BrokenInterfaceError(Exception):

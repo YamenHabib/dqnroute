@@ -212,6 +212,7 @@ class SimulationRunner:
     def __init__(self, run_params, data_dir: str, params_override = {},
                  data_series: Optional[EventSeries] = None, series_period: int = 500,
                  series_funcs: List[str] = ['count', 'sum', 'min', 'max'], **kwargs):
+        
         if type(run_params) == str:
             with open(run_params) as f:
                 run_params = yaml.safe_load(f)
@@ -237,16 +238,19 @@ class SimulationRunner:
         """
         Runs the environment, optionally reporting the progress to a given queue
         """
+        
         data_path = self.runDataPath(random_seed)
         run_id = self.makeRunId(random_seed)
 
         if not ignore_saved and os.path.isfile(data_path):
+            
             self.data_series.load(data_path)
             if progress_queue is not None:
                 progress_queue.put((run_id, self.data_series.maxTime()))
                 progress_queue.put((run_id, None))
 
         else:
+            
             self.env.process(self.runProcess(random_seed))
 
             if progress_queue is not None:

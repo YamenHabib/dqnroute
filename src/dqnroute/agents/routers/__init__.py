@@ -6,3 +6,4 @@ from .centralized import *
 from .q_routing import *
 from .link_state import *
 from .dqn import *
+from .pd_router import * 

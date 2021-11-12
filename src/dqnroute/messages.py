@@ -2,6 +2,8 @@ from functools import total_ordering
 from copy import deepcopy
 from typing import Tuple
 
+from simpy.core import Environment
+
 from .utils import AgentId, InterfaceId
 
 ##
@@ -99,6 +101,7 @@ class DelayInterrupt(WorldEvent):
         super().__init__(delay_id=delay_id)
 
 def delayed_first(evs):
+    #self.handlers[agent].handle(event)
     def _priority(ev):
         if isinstance(ev, MasterEvent):
             return _priority(ev.inner)
@@ -316,6 +319,9 @@ class PkgReceiveAction(Action):
     def __init__(self, pkg: Package):
         super().__init__(pkg=pkg)
 
+
+
+
 class PkgRouteAction(Action):
     """
     Router has re-routed a package to a neighbour
@@ -330,6 +336,8 @@ class PkgRoutePredictionAction(Action):
     def __init__(self, to: AgentId, pkg: Package):
         super().__init__(to=to, pkg=pkg)
 
+
+        
 ##
 # Conveyors events/actions
 #
@@ -448,3 +456,84 @@ class DiverterNotification(ServiceMessage):
 class DiverterPrediction(ServiceMessage):
     def __init__(self, bag: Bag, kick: bool):
         super().__init__(bag=bag, kick=kick)
+
+
+
+class __Vehicle:
+    def __init__(self, **kwargs):
+        self.content = kwargs
+
+    def __str__(self):
+        return f'{self.__class__.__name__}: {str(self.content)}'
+
+    def __getattr__(self, name):
+        try:
+            return self.content[name]
+        except KeyError:
+            raise AttributeError(name)
+
+from simpy import Environment, Event, Resource, Process, Interrupt
+
+class Vehicle(__Vehicle):
+    def __init__(self, 
+                id : int,
+                capacity : int, 
+                max_road : int,
+                road_till_now: int,
+                current_amount: int,
+                current_pos: AgentId,
+                env:Environment):
+        
+        self.id = id
+
+        # max capacity vehicle can hold.
+        self.capacity= capacity     
+
+        # max distance vehicle can travel.
+        self.max_road = max_road  
+
+        # distance vehicle traveled till now.    
+        self.road_till_now = road_till_now   
+
+        # amount hold by vehicle right now.   
+        self.current_amount = current_amount
+        
+        # the current position of the vehicle.
+        self.current_pos = current_pos
+
+        # the enviroment resource of vehicle.
+        self.res = Resource(env, capacity=1)
+
+        
+    def request(self):
+        return self.res.request()
+    
+    def transfer(self, from_agent: AgentId, to_agent: AgentId):
+        pass
+
+
+##
+# PDP events/actions
+#
+
+class VehicleStartRouterEvent(WorldEvent):
+    """
+    Router start to route.
+    """
+    def __init__(self, agent: AgentId, vehicle: Vehicle):
+        super().__init__(agent=agent, vehicle= vehicle)
+
+
+class VehicleRouterAction(Action):
+    """
+    Router has re-routed a vehicle to a neighbour
+    """
+    def __init__(self, to: AgentId, vehicle: Vehicle):
+        super().__init__(to=to, vehicle= vehicle)
+
+class VehicleEnqueuedEvent(WorldEvent):
+    """
+    Some vehicle got transfered to an agent
+    """
+    def __init__(self, agent: AgentId, vehicle: Vehicle):
+        super().__init__(agent=agent, vehicle=vehicle)

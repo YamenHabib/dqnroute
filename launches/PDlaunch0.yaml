@@ -23,7 +23,7 @@ network:
 
 requests:
   - {v: 0, demands: 10}
-  - {v: 1, demands: -2}
+  - {v: 1, demands: 10}
   - {v: 2, demands: -4}
   - {v: 3, demands: 3}
   - {v: 4, demands: -1}
@@ -31,8 +31,8 @@ requests:
   - {v: 6, demands: 5}
 
 vehicles:
-  - {v: 0, capacity: 10, max_road: 100}
-  # - {v: 0, capacity: 15, max_road: 100}
+  - {v: 0, capacity: 50, max_road: 1000}
+  - {v: 1, capacity: 50, max_road: 100}
   # - {v: 0, capacity: 10, max_road: 100}
 
 settings:
